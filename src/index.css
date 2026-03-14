@@ -1,0 +1,116 @@
+/* ============================================================
+   DupliFlag — Global Styles
+   A dark cyber-themed CTF flag tracker
+   ============================================================ */
+
+:root {
+  /* Background & Surfaces */
+  --bg: #0a0e1a;
+  --surface-1: #0f1425;
+  --surface-2: #151b30;
+  --surface-3: #1a2240;
+
+  /* Text */
+  --text-primary: #e8eaf0;
+  --text-secondary: #a0a8c0;
+  --text-muted: #5e6580;
+
+  /* Borders */
+  --border: #1e2540;
+  --border-hover: #2a3358;
+
+  /* Accent Colors */
+  --cyan: #00f0ff;
+  --blue: #3d8bfd;
+  --purple: #bf5af2;
+  --green: #30d158;
+  --amber: #ff9f0a;
+  --red: #ff453a;
+
+  /* Sizing */
+  --radius: 12px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Subtle background grid pattern */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(191, 90, 242, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 240, 255, 0.2);
+  color: var(--text-primary);
+}
+
+/* Link reset */
+a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Code */
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}

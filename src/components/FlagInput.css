@@ -1,0 +1,104 @@
+.flag-input {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.5rem 2rem;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.flag-input__wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.flag-input__wrap:focus-within {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1), 0 0 20px rgba(0, 240, 255, 0.05);
+}
+
+.flag-input__prefix,
+.flag-input__suffix {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--cyan);
+  opacity: 0.6;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.flag-input__field {
+  flex: 1;
+  padding: 0.85rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.flag-input__field:focus {
+  outline: none;
+}
+
+.flag-input__field::placeholder {
+  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+}
+
+.flag-input__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.flag-input__submit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  border: none;
+  border-radius: 12px;
+  color: #0a0e1a;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.flag-input__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+}
+
+.flag-input__submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.flag-input__submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .flag-input {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .flag-input__submit {
+    width: 100%;
+    justify-content: center;
+  }
+}
