@@ -14,7 +14,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 0 1rem;
+  padding: 0 0.75rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -23,20 +23,9 @@
   box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1), 0 0 20px rgba(0, 240, 255, 0.05);
 }
 
-.flag-input__prefix,
-.flag-input__suffix {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--cyan);
-  opacity: 0.6;
-  user-select: none;
-  flex-shrink: 0;
-}
-
 .flag-input__field {
   flex: 1;
-  padding: 0.85rem 0.5rem;
+  padding: 0.85rem 0;
   background: transparent;
   border: none;
   color: var(--text-primary);

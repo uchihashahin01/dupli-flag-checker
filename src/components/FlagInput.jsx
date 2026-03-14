@@ -23,7 +23,6 @@ export default function FlagInput({ onSubmit, disabled }) {
   return (
     <form className="flag-input" onSubmit={handleSubmit} id="flag-input-form">
       <div className="flag-input__wrap">
-        <span className="flag-input__prefix">FLAG{'{'}</span>
         <input
           ref={inputRef}
           id="flag-input"
@@ -36,7 +35,6 @@ export default function FlagInput({ onSubmit, disabled }) {
           autoComplete="off"
           spellCheck="false"
         />
-        <span className="flag-input__suffix">{'}'}</span>
       </div>
       <button
         type="submit"
