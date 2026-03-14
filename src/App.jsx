@@ -95,40 +95,62 @@ export default function App() {
     );
   }, [activeSessionId, setSessions]);
 
-  const exportActiveSession = useCallback(() => {
-    if (!activeSession) return;
+  const exportData = useCallback(() => {
+    const downloadJson = (payload, filename) => {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    if (activeSession) {
+      const payload = {
+        kind: 'dupliflag-session',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        session: {
+          name: activeSession.name,
+          createdAt: activeSession.createdAt ?? Date.now(),
+          flags: activeSession.flags.map(flag => ({
+            value: flag.value,
+            timestamp: flag.timestamp,
+          })),
+        },
+      };
+
+      const safeName = activeSession.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'challenge';
+
+      downloadJson(payload, `${safeName}-dupliflag.json`);
+      addToast(`Exported ${activeSession.flags.length} flag${activeSession.flags.length !== 1 ? 's' : ''} from "${activeSession.name}"`, 'success');
+      return;
+    }
 
     const payload = {
-      kind: 'dupliflag-session',
+      kind: 'dupliflag-backup',
       version: 1,
       exportedAt: new Date().toISOString(),
-      session: {
-        name: activeSession.name,
-        createdAt: activeSession.createdAt ?? Date.now(),
-        flags: activeSession.flags.map(flag => ({
+      sessions: sessions.map(session => ({
+        name: session.name,
+        createdAt: session.createdAt ?? Date.now(),
+        flags: session.flags.map(flag => ({
           value: flag.value,
           timestamp: flag.timestamp,
         })),
-      },
+      })),
     };
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const safeName = activeSession.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'challenge';
-
-    a.href = url;
-    a.download = `${safeName}-dupliflag.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-
-    addToast(`Exported ${activeSession.flags.length} flag${activeSession.flags.length !== 1 ? 's' : ''} from "${activeSession.name}"`, 'success');
-  }, [activeSession, addToast]);
+    const dateTag = new Date().toISOString().slice(0, 10);
+    downloadJson(payload, `dupliflag-backup-${dateTag}.json`);
+    addToast(`Exported ${sessions.length} challenge${sessions.length !== 1 ? 's' : ''} from homepage`, 'success');
+  }, [activeSession, sessions, addToast]);
 
   const importSessionFromFile = useCallback(async (file) => {
     if (!file) return;
@@ -137,95 +159,122 @@ export default function App() {
       const text = await file.text();
       const parsed = JSON.parse(text);
 
-      const importedSession = parsed?.kind === 'dupliflag-session' ? parsed?.session : parsed;
-      const name = typeof importedSession?.name === 'string' ? importedSession.name.trim() : '';
+      const sourceSessions = parsed?.kind === 'dupliflag-backup'
+        ? parsed?.sessions
+        : [parsed?.kind === 'dupliflag-session' ? parsed?.session : parsed];
 
-      if (!name) {
-        throw new Error('Invalid session name');
+      if (!Array.isArray(sourceSessions) || sourceSessions.length === 0) {
+        throw new Error('Invalid import payload');
       }
 
-      const rawFlags = Array.isArray(importedSession?.flags) ? importedSession.flags : [];
-      const seenImportedFlags = new Set();
-      const normalizedFlags = [];
+      const normalizeSession = (rawSession) => {
+        const name = typeof rawSession?.name === 'string' ? rawSession.name.trim() : '';
+        if (!name) return null;
 
-      for (const item of rawFlags) {
-        const rawValue = typeof item === 'string' ? item : item?.value;
-        if (typeof rawValue !== 'string') continue;
+        const rawFlags = Array.isArray(rawSession?.flags) ? rawSession.flags : [];
+        const seenImportedFlags = new Set();
+        const normalizedFlags = [];
 
-        const value = rawValue.trim();
-        if (!value) continue;
+        for (const item of rawFlags) {
+          const rawValue = typeof item === 'string' ? item : item?.value;
+          if (typeof rawValue !== 'string') continue;
 
-        const dedupeKey = value.toLowerCase();
-        if (seenImportedFlags.has(dedupeKey)) continue;
-        seenImportedFlags.add(dedupeKey);
+          const value = rawValue.trim();
+          if (!value) continue;
 
-        const timestampCandidate = typeof item === 'object' ? Number(item?.timestamp) : NaN;
-        normalizedFlags.push({
-          id: generateId(),
-          value,
-          timestamp: Number.isFinite(timestampCandidate) ? timestampCandidate : Date.now(),
-        });
+          const dedupeKey = value.toLowerCase();
+          if (seenImportedFlags.has(dedupeKey)) continue;
+          seenImportedFlags.add(dedupeKey);
+
+          const timestampCandidate = typeof item === 'object' ? Number(item?.timestamp) : NaN;
+          normalizedFlags.push({
+            id: generateId(),
+            value,
+            timestamp: Number.isFinite(timestampCandidate) ? timestampCandidate : Date.now(),
+          });
+        }
+
+        return {
+          name,
+          createdAt: Number.isFinite(Number(rawSession?.createdAt))
+            ? Number(rawSession.createdAt)
+            : Date.now(),
+          flags: normalizedFlags,
+        };
+      };
+
+      const normalizedSessions = sourceSessions
+        .map(normalizeSession)
+        .filter(Boolean);
+
+      if (normalizedSessions.length === 0) {
+        throw new Error('No valid sessions in import');
       }
 
       let targetId = null;
-      let created = false;
-      let addedCount = 0;
-      let duplicateCount = 0;
+      let createdSessions = 0;
+      let addedFlags = 0;
+      let skippedDuplicates = 0;
 
       setSessions(prev => {
-        const existing = prev.find(s => s.name.toLowerCase() === name.toLowerCase());
+        let next = [...prev];
 
-        if (!existing) {
-          const newSession = {
-            id: generateId(),
-            name,
-            flags: normalizedFlags,
-            createdAt: Number.isFinite(Number(importedSession?.createdAt))
-              ? Number(importedSession.createdAt)
-              : Date.now(),
+        for (const imported of normalizedSessions) {
+          const existingIndex = next.findIndex(
+            session => session.name.toLowerCase() === imported.name.toLowerCase()
+          );
+
+          if (existingIndex === -1) {
+            const newSession = {
+              id: generateId(),
+              name: imported.name,
+              createdAt: imported.createdAt,
+              flags: imported.flags,
+            };
+            next.push(newSession);
+            createdSessions += 1;
+            addedFlags += imported.flags.length;
+            targetId = targetId ?? newSession.id;
+            continue;
+          }
+
+          const existing = next[existingIndex];
+          const existingSet = new Set(existing.flags.map(flag => flag.value.toLowerCase()));
+          const toAdd = imported.flags.filter(flag => {
+            const key = flag.value.toLowerCase();
+            if (existingSet.has(key)) return false;
+            existingSet.add(key);
+            return true;
+          });
+
+          skippedDuplicates += imported.flags.length - toAdd.length;
+          addedFlags += toAdd.length;
+          targetId = targetId ?? existing.id;
+
+          next[existingIndex] = {
+            ...existing,
+            flags: [...existing.flags, ...toAdd],
           };
-          targetId = newSession.id;
-          created = true;
-          addedCount = normalizedFlags.length;
-          return [...prev, newSession];
         }
 
-        const existingSet = new Set(existing.flags.map(flag => flag.value.toLowerCase()));
-        const toAdd = normalizedFlags.filter(flag => {
-          const key = flag.value.toLowerCase();
-          if (existingSet.has(key)) return false;
-          existingSet.add(key);
-          return true;
-        });
-
-        duplicateCount = normalizedFlags.length - toAdd.length;
-        addedCount = toAdd.length;
-        targetId = existing.id;
-
-        return prev.map(session =>
-          session.id === existing.id
-            ? { ...session, flags: [...session.flags, ...toAdd] }
-            : session
-        );
+        return next;
       });
 
       if (targetId) {
         setActiveSessionId(targetId);
       }
 
-      if (created) {
-        addToast(`Imported challenge "${name}" with ${addedCount} flag${addedCount !== 1 ? 's' : ''}`, 'success');
-        return;
-      }
-
-      if (addedCount > 0) {
-        addToast(`Imported ${addedCount} new flag${addedCount !== 1 ? 's' : ''} into "${name}"`, 'success');
+      if (normalizedSessions.length === 1 && createdSessions === 1) {
+        addToast(`Imported challenge "${normalizedSessions[0].name}" with ${addedFlags} flag${addedFlags !== 1 ? 's' : ''}`, 'success');
       } else {
-        addToast(`No new flags added. All imported flags already exist in "${name}"`, 'info');
+        addToast(
+          `Imported ${normalizedSessions.length} challenge${normalizedSessions.length !== 1 ? 's' : ''}: ${createdSessions} created, ${addedFlags} flag${addedFlags !== 1 ? 's' : ''} added`,
+          'success'
+        );
       }
 
-      if (duplicateCount > 0) {
-        addToast(`Skipped ${duplicateCount} duplicate flag${duplicateCount !== 1 ? 's' : ''} during import`, 'warning');
+      if (skippedDuplicates > 0) {
+        addToast(`Skipped ${skippedDuplicates} duplicate flag${skippedDuplicates !== 1 ? 's' : ''} during import`, 'warning');
       }
     } catch {
       addToast('Import failed: invalid JSON or unsupported export file', 'warning');
@@ -270,7 +319,8 @@ export default function App() {
           flags={activeSession?.flags || []}
           onDelete={deleteFlag}
           sessionName={activeSession?.name}
-          onExport={exportActiveSession}
+          hasAnySessions={sessions.length > 0}
+          onExport={exportData}
           onImport={importSessionFromFile}
         />
       </main>

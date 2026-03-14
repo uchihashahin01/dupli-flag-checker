@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import './FlagHistory.css';
 
-export default function FlagHistory({ flags, onDelete, sessionName, onExport, onImport }) {
+export default function FlagHistory({ flags, onDelete, sessionName, hasAnySessions, onExport, onImport }) {
   const [copiedId, setCopiedId] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -64,6 +64,35 @@ export default function FlagHistory({ flags, onDelete, sessionName, onExport, on
               <span className="flag-history__feature-icon">📋</span>
               <span>One-click copy</span>
             </div>
+          </div>
+          <div className="flag-history__empty-actions">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={handlePickImportFile}
+              title="Import challenge flags JSON"
+              id="import-flags-empty-btn"
+            >
+              Import File
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={onExport}
+              title={hasAnySessions ? 'Export all challenges JSON' : 'Export empty backup JSON'}
+              id="export-flags-empty-btn"
+            >
+              {hasAnySessions ? 'Export All' : 'Export Backup'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportChange}
+              className="flag-history__file-input"
+              aria-hidden="true"
+              tabIndex={-1}
+            />
           </div>
         </div>
       </div>
