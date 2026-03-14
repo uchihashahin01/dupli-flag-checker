@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import './FlagHistory.css';
 
-export default function FlagHistory({ flags, onDelete, sessionName }) {
+export default function FlagHistory({ flags, onDelete, sessionName, onExport, onImport }) {
   const [copiedId, setCopiedId] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleCopy = async (flag) => {
     try {
@@ -27,6 +28,18 @@ export default function FlagHistory({ flags, onDelete, sessionName }) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
       ' · ' +
       d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const handlePickImportFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file && onImport) {
+      onImport(file);
+    }
+    e.target.value = '';
   };
 
   if (!sessionName) {
@@ -64,9 +77,38 @@ export default function FlagHistory({ flags, onDelete, sessionName }) {
           <span className="flag-history__title-icon">📝</span>
           {sessionName}
         </h2>
-        <span className="flag-history__badge">
-          {flags.length} submitted
-        </span>
+        <div className="flag-history__header-actions">
+          <span className="flag-history__badge">
+            {flags.length} submitted
+          </span>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={handlePickImportFile}
+            title="Import challenge flags JSON"
+            id="import-flags-btn"
+          >
+            Import
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={onExport}
+            title="Export challenge flags JSON"
+            id="export-flags-btn"
+          >
+            Export
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportChange}
+            className="flag-history__file-input"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        </div>
       </div>
 
       {flags.length === 0 ? (

@@ -95,6 +95,143 @@ export default function App() {
     );
   }, [activeSessionId, setSessions]);
 
+  const exportActiveSession = useCallback(() => {
+    if (!activeSession) return;
+
+    const payload = {
+      kind: 'dupliflag-session',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      session: {
+        name: activeSession.name,
+        createdAt: activeSession.createdAt ?? Date.now(),
+        flags: activeSession.flags.map(flag => ({
+          value: flag.value,
+          timestamp: flag.timestamp,
+        })),
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeName = activeSession.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'challenge';
+
+    a.href = url;
+    a.download = `${safeName}-dupliflag.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    addToast(`Exported ${activeSession.flags.length} flag${activeSession.flags.length !== 1 ? 's' : ''} from "${activeSession.name}"`, 'success');
+  }, [activeSession, addToast]);
+
+  const importSessionFromFile = useCallback(async (file) => {
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      const importedSession = parsed?.kind === 'dupliflag-session' ? parsed?.session : parsed;
+      const name = typeof importedSession?.name === 'string' ? importedSession.name.trim() : '';
+
+      if (!name) {
+        throw new Error('Invalid session name');
+      }
+
+      const rawFlags = Array.isArray(importedSession?.flags) ? importedSession.flags : [];
+      const seenImportedFlags = new Set();
+      const normalizedFlags = [];
+
+      for (const item of rawFlags) {
+        const rawValue = typeof item === 'string' ? item : item?.value;
+        if (typeof rawValue !== 'string') continue;
+
+        const value = rawValue.trim();
+        if (!value) continue;
+
+        const dedupeKey = value.toLowerCase();
+        if (seenImportedFlags.has(dedupeKey)) continue;
+        seenImportedFlags.add(dedupeKey);
+
+        const timestampCandidate = typeof item === 'object' ? Number(item?.timestamp) : NaN;
+        normalizedFlags.push({
+          id: generateId(),
+          value,
+          timestamp: Number.isFinite(timestampCandidate) ? timestampCandidate : Date.now(),
+        });
+      }
+
+      let targetId = null;
+      let created = false;
+      let addedCount = 0;
+      let duplicateCount = 0;
+
+      setSessions(prev => {
+        const existing = prev.find(s => s.name.toLowerCase() === name.toLowerCase());
+
+        if (!existing) {
+          const newSession = {
+            id: generateId(),
+            name,
+            flags: normalizedFlags,
+            createdAt: Number.isFinite(Number(importedSession?.createdAt))
+              ? Number(importedSession.createdAt)
+              : Date.now(),
+          };
+          targetId = newSession.id;
+          created = true;
+          addedCount = normalizedFlags.length;
+          return [...prev, newSession];
+        }
+
+        const existingSet = new Set(existing.flags.map(flag => flag.value.toLowerCase()));
+        const toAdd = normalizedFlags.filter(flag => {
+          const key = flag.value.toLowerCase();
+          if (existingSet.has(key)) return false;
+          existingSet.add(key);
+          return true;
+        });
+
+        duplicateCount = normalizedFlags.length - toAdd.length;
+        addedCount = toAdd.length;
+        targetId = existing.id;
+
+        return prev.map(session =>
+          session.id === existing.id
+            ? { ...session, flags: [...session.flags, ...toAdd] }
+            : session
+        );
+      });
+
+      if (targetId) {
+        setActiveSessionId(targetId);
+      }
+
+      if (created) {
+        addToast(`Imported challenge "${name}" with ${addedCount} flag${addedCount !== 1 ? 's' : ''}`, 'success');
+        return;
+      }
+
+      if (addedCount > 0) {
+        addToast(`Imported ${addedCount} new flag${addedCount !== 1 ? 's' : ''} into "${name}"`, 'success');
+      } else {
+        addToast(`No new flags added. All imported flags already exist in "${name}"`, 'info');
+      }
+
+      if (duplicateCount > 0) {
+        addToast(`Skipped ${duplicateCount} duplicate flag${duplicateCount !== 1 ? 's' : ''} during import`, 'warning');
+      }
+    } catch {
+      addToast('Import failed: invalid JSON or unsupported export file', 'warning');
+    }
+  }, [setSessions, setActiveSessionId, addToast]);
+
   return (
     <div className="app">
       {/* Mobile menu toggle */}
@@ -133,6 +270,8 @@ export default function App() {
           flags={activeSession?.flags || []}
           onDelete={deleteFlag}
           sessionName={activeSession?.name}
+          onExport={exportActiveSession}
+          onImport={importSessionFromFile}
         />
       </main>
 

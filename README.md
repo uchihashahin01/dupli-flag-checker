@@ -14,6 +14,7 @@
 | 📁 **Challenge Sessions** | Organize flags by CTF challenge/problem — each under its own session |
 | 💾 **Offline Persistence** | All data saved to `localStorage` — works without internet, no backend needed |
 | 📋 **One-Click Copy** | Copy any flag to clipboard with a single click |
+| 📤 **Export & Import** | Share challenge flag lists as JSON and import them on another device |
 | 🗑️ **Easy Management** | Delete individual flags or entire challenge sessions |
 | 🔎 **Search Challenges** | Quickly find a challenge from your list with the search bar |
 | 📱 **Fully Responsive** | Works beautifully on desktop, tablet, and mobile |
@@ -42,7 +43,8 @@ Submit flags, see timestamps, and get instant duplicate warnings.
 3. **Duplicate Check** → If the flag was already submitted for this challenge, you'll see a ⚠️ warning toast
 4. **New Flag Accepted** → Unique flags are added to the history with a timestamp
 5. **Review History** → Scroll through all submitted flags, copy them, or delete as needed
-6. **Persist Across Sessions** → Close the tab and come back — all your data is still there
+6. **Export / Import** → Use the challenge header actions to export JSON and import shared lists
+7. **Persist Across Sessions** → Close the tab and come back — all your data is still there
 
 ---
 
